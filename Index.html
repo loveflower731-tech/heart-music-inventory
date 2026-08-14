@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>歆動音樂庫存系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --border:#e2e5ea; --text:#1f2430; --muted:#6b7280;
+    --accent:#3454d1; --accent-dark:#28409e; --accent-soft:#eaefff;
+    --green:#1a9c5c; --green-soft:#e6f7ee; --red:#d3453a; --red-soft:#fdeceb;
+    --amber:#b8790a; --amber-soft:#fdf3e2; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text);}
+  header{background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:20;}
+  .header-inner{max-width:1180px;margin:0 auto;padding:12px 16px 0;}
+  h1{font-size:18px;margin:4px 0 10px;font-weight:700;}
+  nav{display:flex;gap:4px;overflow-x:auto;}
+  nav button{border:none;background:none;padding:10px 14px;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap;border-bottom:3px solid transparent;font-weight:600;}
+  nav button.active{color:var(--accent);border-bottom-color:var(--accent);}
+  main{max-width:1180px;margin:0 auto;padding:16px;}
+  section.tab{display:none;}
+  section.tab.active{display:block;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .row > *{min-width:0;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  input,select,textarea{font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent);}
+  button{font:inherit;cursor:pointer;}
+  .btn{background:var(--accent);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:600;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn.secondary{background:#fff;color:var(--accent);border:1px solid var(--accent);}
+  .btn.ghost{background:none;color:var(--muted);border:1px solid var(--border);}
+  .btn.danger{background:#fff;color:var(--red);border:1px solid var(--red);}
+  .btn.sm{padding:5px 10px;font-size:12.5px;border-radius:6px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--muted);font-weight:600;background:#fafbfc;position:sticky;top:0;}
+  tbody tr:hover{background:#fafcff;}
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+  .tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;background:var(--accent-soft);color:var(--accent-dark);}
+  .muted{color:var(--muted);}
+  .num{text-align:right;font-variant-numeric:tabular-nums;}
+  .search-box{flex:1;min-width:180px;}
+  .modal-backdrop{position:fixed;inset:0;background:rgba(20,22,30,.45);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;}
+  .modal{background:#fff;border-radius:12px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:20px;}
+  .modal h2{margin-top:0;font-size:17px;}
+  .field{margin-bottom:12px;}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  .field input,.field select,.field textarea{width:100%;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .item-row{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;}
+  .item-row input,.item-row select{width:100%;}
+  .card{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;background:#fff;}
+  .card-head{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .card-head .title{font-weight:700;}
+  .empty{padding:30px;text-align:center;color:var(--muted);}
+  .toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:300;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .toast .msg{padding:10px 18px;border-radius:8px;font-weight:600;font-size:14px;box-shadow:0 4px 16px rgba(0,0,0,.15);animation:fade .25s ease;}
+  .msg.info{background:#2b2f38;color:#fff;}
+  .msg.success{background:var(--green);color:#fff;}
+  .msg.error{background:var(--red);color:#fff;}
+  @keyframes fade{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+  .scan-banner{padding:16px;border-radius:var(--radius);font-size:16px;font-weight:700;text-align:center;margin-bottom:12px;transition:.15s;}
+  .scan-banner.success{background:var(--green-soft);color:var(--green);}
+  .scan-banner.fail{background:var(--red-soft);color:var(--red);}
+  .scan-banner.idle{background:#f1f2f5;color:var(--muted);font-weight:500;}
+  #reader{width:100%;max-width:420px;margin:0 auto 12px;border-radius:var(--radius);overflow:hidden;background:#000;}
+  .stat{background:var(--accent-soft);border-radius:var(--radius);padding:10px 14px;text-align:center;}
+  .stat .n{font-size:22px;font-weight:800;color:var(--accent-dark);}
+  .stat .l{font-size:12px;color:var(--muted);}
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;}
+  .diff-pos{color:var(--green);font-weight:700;}
+  .diff-neg{color:var(--red);font-weight:700;}
+  .diff-zero{color:var(--muted);}
+  .config-banner{background:var(--amber-soft);color:var(--amber);padding:10px 14px;border-radius:var(--radius);margin-bottom:14px;font-size:13.5px;}
+  .config-banner code{background:#fff;padding:1px 6px;border-radius:4px;}
+  .qty-input{width:70px;}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:24px;}
+  @media (max-width:640px){
+    .grid2,.grid3{grid-template-columns:1fr;}
+    .item-row{grid-template-columns:1fr 1fr;}
+    .item-row .btn{grid-column:span 2;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <h1>🎸 歆動音樂庫存系統</h1>
+    <nav id="tabNav">
+      <button data-tab="products" class="active">商品管理</button>
+      <button data-tab="purchase">進貨</button>
+      <button data-tab="inventory">查詢庫存</button>
+      <button data-tab="sales">銷貨</button>
+      <button data-tab="stocktake">點貨 / 盤點</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <div id="configBanner" class="config-banner" style="display:none;">
+    ⚠️ 尚未設定資料庫網址。請開啟 <code>index.html</code>，把最上方 <code>API_URL</code> 改成你部署 Apps Script 後拿到的 <code>.../exec</code> 網址。
+  </div>
+
+  <!-- ============ 商品管理 ============ -->
+  <section id="tab-products" class="tab active">
+    <div class="toolbar">
+      <div class="row" style="flex:1;">
+        <input class="search-box" id="prodSearch" placeholder="搜尋品名 / 條碼 / 廠商..." />
+        <select id="prodCategoryFilter"><option value="">全部分類</option></select>
+      </div>
+      <button class="btn" id="btnNewProduct">＋ 新增商品</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>條碼</th><th>品名</th><th>分類</th><th>廠商</th>
+          <th class="num">進貨價</th><th class="num">售價</th><th class="num">特價</th>
+          <th class="num">庫存</th><th>單位</th><th>操作</th>
+        </tr></thead>
+        <tbody id="productsBody"></tbody>
+      </table>
+    </div>
+    <div id="productsEmpty" class="empty" style="display:none;">目前沒有商品，點右上角「＋ 新增商品」開始建立品項。</div>
+  </section>
+
+  <!-- ============ 進貨 ============ -->
+  <section id="tab-purchase" class="tab">
+    <div class="toolbar">
+      <div class="row">
+        <input type="date" id="poFilterStart" />
+        <span class="muted">～</span>
+        <input type="date" id="poFilterEnd" />
+        <button class="btn ghost sm" id="btnPoFilterClear">清除篩選</button>
+      </div>
+      <button class="btn" id="btnNewPO">＋ 新增進貨單</button>
+    </div>
+    <div id="poList"></div>
+    <div id="poEmpty" class="empty" style="display:none;">還沒有任何進貨紀錄。</div>
+  </section>
+
+  <!-- ============ 查詢庫存 ============ -->
+  <section id="tab-inventory" class="tab">
+    <div class="toolbar">
+      <div class="row" style="flex:1;">
+        <input class="search-box" id="invSearch" placeholder="搜尋品名 / 條碼 / 廠商..." />
+        <select id="invCategoryFilter"><option value="">全部分類</option></select>
+      </div>
+      <button class="btn secondary" id="btnExportInventory">📤 匯出 Excel</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>條碼</th><th>品名</th><th>分類</th><th>廠商</th>
+          <th class="num">庫存</th><th class="num">近30天銷量</th><th class="num">累計銷量</th><th class="num">累計進貨</th>
+          <th class="num">售價</th><th class="num">特價</th><th>操作</th>
+        </tr></thead>
+        <tbody id="inventoryBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 銷貨 ============ -->
+  <section id="tab-sales" class="tab">
+    <div class="toolbar">
+      <div class="row">
+        <input type="date" id="saleFilterStart" />
+        <span class="muted">～</span>
+        <input type="date" id="saleFilterEnd" />
+        <button class="btn ghost sm" id="btnSaleFilterClear">清除篩選</button>
+      </div>
+      <button class="btn" id="btnNewSale">＋ 新增銷貨</button>
+    </div>
+    <div id="saleList"></div>
+    <div id="saleEmpty" class="empty" style="display:none;">還沒有任何銷貨紀錄。</div>
+  </section>
+
+  <!-- ============ 點貨 / 盤點 ============ -->
+  <section id="tab-stocktake" class="tab">
+
+    <div id="stNoSession" class="panel">
+      <p class="muted">開始一次新的點貨盤點，系統會把目前所有商品的庫存數量拍下快照，接著就可以用相機掃描 CODE128 條碼來點貨。</p>
+      <div class="row">
+        <input id="stNewNotes" placeholder="備註（例如：8月份定期盤點）" style="flex:1;min-width:200px;" />
+        <button class="btn" id="btnStartCount">開始新盤點</button>
+      </div>
+      <div id="stResumeArea" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="stSessionArea" style="display:none;">
+      <div class="panel">
+        <div class="row" style="justify-content:space-between;">
+          <div><b id="stSessionTitle"></b> <span class="muted" id="stSessionMeta"></span></div>
+          <div class="row">
+            <button class="btn secondary sm" id="btnExportCount">📤 匯出 Excel</button>
+            <button class="btn ghost sm" id="btnCloseSession">結束檢視</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div id="scanBanner" class="scan-banner idle">尚未開始掃描</div>
+        <div id="reader"></div>
+        <div class="row" style="justify-content:center;margin-bottom:10px;">
+          <button class="btn" id="btnToggleScan">📷 啟動相機掃描</button>
+        </div>
+        <div class="row" style="justify-content:center;">
+          <input id="manualBarcode" placeholder="或手動輸入條碼後按 Enter" style="max-width:260px;" />
+          <label class="row" style="gap:6px;">
+            <span class="muted" style="font-size:13px;">數量</span>
+            <input id="scanQty" type="number" value="1" min="1" style="width:70px;" />
+          </label>
+        </div>
+        <p class="muted" style="font-size:12.5px;text-align:center;margin:8px 0 0;">
+          整箱都是同一件商品、一次有很多件時，把「數量」改成實際件數（例如 50），掃一次或輸入條碼按 Enter 一次，就會直接累加那個數量，不用一件一件掃。掃完記得改回 1，避免下一個商品也被加成一樣的數量。
+        </p>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><div class="n" id="statScannedItems">0</div><div class="l">已掃到品項數</div></div>
+        <div class="stat"><div class="n" id="statTotalItems">0</div><div class="l">總品項數</div></div>
+        <div class="stat"><div class="n" id="statUnscanned">0</div><div class="l">尚未掃到</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="row" style="margin-bottom:10px;justify-content:space-between;">
+          <div class="row">
+            <input id="stTableSearch" placeholder="搜尋品名 / 條碼..." class="search-box" />
+            <label class="row" style="gap:4px;"><input type="checkbox" id="stOnlyUnscanned" /> 只顯示未掃到</label>
+            <label class="row" style="gap:4px;"><input type="checkbox" id="stOnlyDiff" /> 只顯示有差異</label>
+          </div>
+          <button class="btn danger sm" id="btnFinishCount">✅ 套用調整並完成盤點</button>
+        </div>
+        <div class="row" style="margin-bottom:10px;">
+          <select id="stManualPick" style="flex:1;"><option value="">手動選商品加入點貨（無條碼或掃描失敗時使用）...</option></select>
+          <button class="btn secondary sm" id="btnManualAdd">加入 +1</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>條碼</th><th>品名</th><th class="num">系統庫存</th><th class="num">已掃/確認數量</th><th class="num">差異</th>
+            </tr></thead>
+            <tbody id="stTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <b>歷史盤點紀錄</b>
+      <div id="stHistoryList" class="muted" style="margin-top:8px;">載入中...</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>歆動音樂庫存系統 · 資料儲存於 Google 試算表</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+ *  設定：把你部署 Apps Script 後拿到的網址填在這裡
+ * ================================================================ */
+const API_URL = "https://script.google.com/macros/s/AKfycbx24S6sDQmUyjlq_aA2apxjDIaN-Yg4B6zflB__S4UdWRr0a7ioIPhAMT9e2qoq8dIOUQ/exec";
+
+/* ================================================================
+ *  基礎工具：API 呼叫 / Toast 提示 / 音效
+ * ================================================================ */
+
+async function apiGet(action, params){
+  const usp = new URLSearchParams(Object.assign({action}, params||{}));
+  const res = await fetch(`${API_URL}?${usp.toString()}`, {method:"GET"});
+  const json = await res.json();
+  if(!json.success) throw new Error(json.error||"發生錯誤");
+  return json.data;
+}
+
+async function apiPost(action, payload){
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"}, // 避免觸發CORS preflight
+    body: JSON.stringify(Object.assign({action}, payload||{})),
+  });
+  const json = await res.json();
+  if(!json.success) throw new Error(json.error||"發生錯誤");
+  return json.data;
+}
+
+function toast(msg, type){
+  const el = document.createElement("div");
+  el.className = "msg "+(type||"info");
+  el.textContent = msg;
+  document.getElementById("toast").appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+function fmtMoney(n){
+  n = Number(n)||0;
+  return n.toLocaleString("zh-TW");
+}
+
+// 簡單嗶聲（不用外部音檔），success = 高音短嗶，fail = 低音雙嗶
+let audioCtx;
+function beep(type){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    const play = (freq, start, dur, gainVal)=>{
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.value = gainVal;
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(audioCtx.currentTime+start);
+      osc.stop(audioCtx.currentTime+start+dur);
+    };
+    if(type==="success"){
+      play(1046, 0, 0.12, 0.18);
+      play(1568, 0.1, 0.14, 0.18);
+    } else {
+      play(220, 0, 0.16, 0.2);
+      play(180, 0.18, 0.22, 0.2);
+    }
+  }catch(e){ /* 瀏覽器不支援就算了 */ }
+}
+
+/* ================================================================
+ *  分頁切換
+ * ================================================================ */
+document.getElementById("tabNav").addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-tab]");
+  if(!btn) return;
+  document.querySelectorAll("#tabNav button").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll("section.tab").forEach(s=>s.classList.remove("active"));
+  document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  onTabShown(btn.dataset.tab);
+});
+
+function onTabShown(tab){
+  if(tab==="products") loadProducts();
+  if(tab==="purchase") loadPurchaseOrders();
+  if(tab==="inventory") loadInventory();
+  if(tab==="sales") loadSales();
+  if(tab==="stocktake") loadStocktakeTab();
+}
+
+/* ================================================================
+ *  共用狀態
+ * ================================================================ */
+let PRODUCTS = []; // 全部商品快取
+
+async function refreshProducts(){
+  PRODUCTS = await apiGet("listProducts");
+  populateCategoryFilters();
+  return PRODUCTS;
+}
+
+function populateCategoryFilters(){
+  const cats = Array.from(new Set(PRODUCTS.map(p=>p.Category).filter(Boolean))).sort();
+  [document.getElementById("prodCategoryFilter"), document.getElementById("invCategoryFilter")].forEach(sel=>{
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">全部分類</option>' + cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+    sel.value = cur;
+  });
+}
+
+function escapeHtml(s){
+  return String(s??"").replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+/* ================================================================
+ *  商品管理
+ * ================================================================ */
+
+async function loadProducts(){
+  try{
+    await refreshProducts();
+    renderProducts();
+  }catch(err){ toast(err.message, "error"); }
+}
+
+function renderProducts(){
+  const kw = document.getElementById("prodSearch").value.trim().toLowerCase();
+  const cat = document.getElementById("prodCategoryFilter").value;
+  const rows = PRODUCTS.filter(p=>{
+    if(cat && p.Category!==cat) return false;
+    if(!kw) return true;
+    return [p.Name,p.Barcode,p.Vendor].some(v=>String(v||"").toLowerCase().includes(kw));
+  });
+  const body = document.getElementById("productsBody");
+  document.getElementById("productsEmpty").style.display = rows.length? "none":"block";
+  body.innerHTML = rows.map(p=>`
+    <tr>
+      <td>${escapeHtml(p.Barcode)}</td>
+      <td>${escapeHtml(p.Name)}</td>
+      <td>${p.Category? `<span class="tag">${escapeHtml(p.Category)}</span>`:""}</td>
+      <td>${escapeHtml(p.Vendor)}</td>
+      <td class="num">${fmtMoney(p.CostPrice)}</td>
+      <td class="num">${fmtMoney(p.Price)}</td>
+      <td class="num">${p.SpecialPrice!==""&&p.SpecialPrice!==undefined? fmtMoney(p.SpecialPrice):"—"}</td>
+      <td class="num">${fmtMoney(p.Stock)}</td>
+      <td>${escapeHtml(p.Unit)}</td>
+      <td>
+        <button class="btn ghost sm" onclick="openProductModal('${p.ProductID}')">編輯</button>
+        <button class="btn ghost sm" onclick="quickAdjustStock('${p.ProductID}', ${Number(p.Stock)||0})">調整庫存</button>
+        <button class="btn danger sm" onclick="disableProduct('${p.ProductID}')">停用</button>
+        <button class="btn danger sm" onclick="deleteProductPermanently('${p.ProductID}')">永久刪除</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+document.getElementById("prodSearch").addEventListener("input", renderProducts);
+document.getElementById("prodCategoryFilter").addEventListener("change", renderProducts);
+document.getElementById("btnNewProduct").addEventListener("click", ()=>openProductModal(null));
+
+function openProductModal(productId){
+  const p = productId ? PRODUCTS.find(x=>x.ProductID===productId) : null;
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h2>${p? "編輯商品":"新增商品"}</h2>
+      <div class="grid2">
+        <div class="field"><label>品名 *</label><input id="f_name" value="${p?escapeHtml(p.Name):""}" /></div>
+        <div class="field"><label>條碼（留空則自動產生）</label><input id="f_barcode" value="${p?escapeHtml(p.Barcode):""}" /></div>
+        <div class="field"><label>${p? "目前庫存數量" : "初始庫存數量"}</label><input id="f_stock" type="number" value="${p?p.Stock:0}" /></div>
+        <div class="field"><label>單位</label><input id="f_unit" value="${p?escapeHtml(p.Unit):"pc"}" /></div>
+        <div class="field"><label>分類</label><input id="f_category" list="catList" value="${p?escapeHtml(p.Category):""}" /></div>
+        <div class="field"><label>廠商</label><input id="f_vendor" value="${p?escapeHtml(p.Vendor):""}" /></div>
+        <div class="field"><label>進貨價</label><input id="f_cost" type="number" step="0.01" value="${p?p.CostPrice:0}" /></div>
+        <div class="field"><label>售價</label><input id="f_price" type="number" step="0.01" value="${p?p.Price:0}" /></div>
+        <div class="field"><label>特價（選填）</label><input id="f_special" type="number" step="0.01" value="${p&&p.SpecialPrice!==""?p.SpecialPrice:""}" /></div>
+      </div>
+      ${p? '<p class="muted" style="font-size:12.5px;margin-top:-4px;">修改「目前庫存數量」會建立一筆庫存異動紀錄（跟進貨/銷貨/盤點一樣可追溯）。</p>' : ""}
+      <div class="field"><label>備註</label><textarea id="f_notes" rows="2">${p?escapeHtml(p.Notes):""}</textarea></div>
+      <datalist id="catList">${Array.from(new Set(PRODUCTS.map(x=>x.Category).filter(Boolean))).map(c=>`<option value="${escapeHtml(c)}">`).join("")}</datalist>
+      <div class="row" style="justify-content:flex-end;">
+        <button class="btn ghost" id="modalCancel">取消</button>
+        <button class="btn" id="modalSave">儲存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  backdrop.querySelector("#modalCancel").onclick = ()=>backdrop.remove();
+  backdrop.addEventListener("click",(e)=>{ if(e.target===backdrop) backdrop.remove(); });
+  const saveBtn = backdrop.querySelector("#modalSave");
+  let saving = false;
+  saveBtn.onclick = async ()=>{
+    if(saving) return; // 防止連點/重複送出造成重複新增
+    const data = {
+      Name: document.getElementById("f_name").value.trim(),
+      Barcode: document.getElementById("f_barcode").value.trim(),
+      Category: document.getElementById("f_category").value.trim(),
+      Vendor: document.getElementById("f_vendor").value.trim(),
+      CostPrice: Number(document.getElementById("f_cost").value)||0,
+      Price: Number(document.getElementById("f_price").value)||0,
+      SpecialPrice: document.getElementById("f_special").value==="" ? "" : Number(document.getElementById("f_special").value),
+      Unit: document.getElementById("f_unit").value.trim()||"pc",
+      Notes: document.getElementById("f_notes").value.trim(),
+    };
+    if(!data.Name){ toast("請輸入品名","error"); return; }
+    const stockVal = Number(document.getElementById("f_stock").value)||0;
+    saving = true;
+    saveBtn.disabled = true;
+    saveBtn.textContent = "儲存中...";
+    try{
+      if(p){
+        await apiPost("updateProduct", {id:p.ProductID, data});
+        if(stockVal !== Number(p.Stock||0)){
+          await apiPost("adjustStock", {productId:p.ProductID, newQty:stockVal, reason:"商品編輯頁調整"});
+        }
+        toast("已更新商品","success");
+      } else {
+        data.Stock = stockVal;
+        await apiPost("createProduct", {data});
+        toast("已新增商品","success");
+      }
+      backdrop.remove();
+      await loadProducts();
+    }catch(err){
+      toast(err.message,"error");
+      saving = false;
+      saveBtn.disabled = false;
+      saveBtn.textContent = "儲存";
+    }
+  };
+}
+
+async function disableProduct(id){
+  if(!confirm("確定要停用這個商品嗎？（不會刪除歷史紀錄，只是之後不會再顯示）")) return;
+  try{
+    await apiPost("deleteProduct", {id});
+    toast("已停用商品","success");
+    await loadProducts();
+  }catch(err){ toast(err.message,"error"); }
+}
+
+async function deleteProductPermanently(id){
+  const p = PRODUCTS.find(x=>x.ProductID===id);
+  const name = p? p.Name : id;
+  if(!confirm(`確定要「永久刪除」商品「${name}」嗎？\n這個動作無法復原，只有從來沒有任何進貨/銷貨/盤點紀錄的商品才能刪除成功。`)) return;
+  const password = prompt("請輸入刪除密碼：");
+  if(password===null) return; // 取消
+  try{
+    await apiPost("deleteProductPermanently", {id, password});
+    toast("已永久刪除商品","success");
+    await loadProducts();
+  }catch(err){ toast(err.message,"error"); }
+}
+
+async function quickAdjustStock(id, currentStock){
+  const val = prompt("輸入調整後的正確庫存數量：", currentStock);
+  if(val===null) return;
+  const n = Number(val);
+  if(isNaN(n)){ toast("請輸入數字","error"); return; }
+  try{
+    await apiPost("adjustStock", {productId:id, newQty:n, reason:"商品管理頁手動調整"});
+    toast("庫存已調整","success");
+    await loadProducts();
+  }catch(err){ toast(err.message,"error"); }
+}
+
+/* ================================================================
+ *  進貨
+ * ================================================================ */
+
+document.getElementById("btnNewPO").addEventListener("click", openPOModal);
+document.getElementById("poFilterStart").addEventListener("change", loadPurchaseOrders);
+document.getElementById("poFilterEnd").addEventListener("change", loadPurchaseOrders);
+document.getElementById("btnPoFilterClear").addEventListener("click", ()=>{
+  document.getElementById("poFilterStart").value="";
+  document.getElementById("poFilterEnd").value="";
+  loadPurchaseOrders();
+});
+
+async function loadPurchaseOrders(){
+  try{
+    if(!PRODUCTS.length) await refreshProducts();
+    const params = {};
+    const s = document.getElementById("poFilterStart").value;
+    const e = document.getElementById("poFilterEnd").value;
+    if(s) params.startDate = s;
+    if(e) params.endDate = e;
+    const list = await apiGet("listPurchaseOrders", params);
+    renderPOList(list);
+  }catch(err){ toast(err.message,"error"); }
+}
+
+function renderPOList(list){
+  const wrap = document.getElementById("poList");
+  document.getElementById("poEmpty").style.display = list.length? "none":"block";
+  wrap.innerHTML = list.map(po=>{
+    const total = po.items.reduce((s,i)=>s+Number(i.Subtotal||0),0);
+    return `
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="title">${escapeHtml(po.Date)} · ${escapeHtml(po.Vendor||"（未填廠商）")}</span>
+          <div class="muted" style="font-size:12.5px;">單號 ${escapeHtml(po.POID)}${po.Notes? " · "+escapeHtml(po.Notes):""}</div>
+        </div>
+        <div class="muted">共 ${po.items.length} 項 · 小計 NT$${fmtMoney(total)}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>品名</th><th class="num">數量</th><th class="num">進貨價</th><th class="num">小計</th></tr></thead>
+          <tbody>
+            ${po.items.map(i=>`<tr><td>${escapeHtml(i.ProductName)}</td><td class="num">${fmtMoney(i.Qty)}</td><td class="num">${fmtMoney(i.CostPrice)}</td><td class="num">${fmtMoney(i.Subtotal)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function openPOModal(){
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h2>新增進貨單</h2>
+      <div class="grid2">
+        <div class="field"><label>進貨日期</label><input id="po_date" type="date" value="${new Date().toISOString().slice(0,10)}" /></div>
+        <div class="field"><label>廠商</label><input id="po_vendor" /></div>
+      </div>
+      <div class="field"><label>備註</label><input id="po_notes" /></div>
+      <hr />
+      <div id="po_items"></div>
+      <button class="btn ghost sm" id="po_addItem">＋ 新增一列商品</button>
+      <div class="row" style="justify-content:flex-end;margin-top:14px;">
+        <button class="btn ghost" id="po_cancel">取消</button>
+        <button class="btn" id="po_save">儲存進貨單</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  backdrop.addEventListener("click",(e)=>{ if(e.target===backdrop) backdrop.remove(); });
+  backdrop.querySelector("#po_cancel").onclick = ()=>backdrop.remove();
+
+  const itemsWrap = backdrop.querySelector("#po_items");
+  const options = PRODUCTS.map(p=>`<option value="${p.ProductID}">${escapeHtml(p.Name)}（${escapeHtml(p.Barcode)}）</option>`).join("");
+
+  function addItemRow(){
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <select class="it_product">${`<option value="">選擇商品...</option>`+options}</select>
+      <input class="it_qty" type="number" placeholder="數量" value="1" />
+      <input class="it_cost" type="number" step="0.01" placeholder="進貨價" />
+      <div class="muted it_subtotal num">0</div>
+      <button class="btn ghost sm">✕</button>
+    `;
+    itemsWrap.appendChild(row);
+    const prodSel = row.querySelector(".it_product");
+    const qtyInput = row.querySelector(".it_qty");
+    const costInput = row.querySelector(".it_cost");
+    const subEl = row.querySelector(".it_subtotal");
+    function recalc(){
+      const qty = Number(qtyInput.value)||0;
+      const cost = Number(costInput.value)||0;
+      subEl.textContent = fmtMoney(qty*cost);
+    }
+    prodSel.addEventListener("change", ()=>{
+      const p = PRODUCTS.find(x=>x.ProductID===prodSel.value);
+      if(p) costInput.value = p.CostPrice;
+      recalc();
+    });
+    qtyInput.addEventListener("input", recalc);
+    costInput.addEventListener("input", recalc);
+    row.querySelector("button").addEventListener("click", ()=>row.remove());
+  }
+  addItemRow();
+  backdrop.querySelector("#po_addItem").addEventListener("click", addItemRow);
+
+  const poSaveBtn = backdrop.querySelector("#po_save");
+  let poSaving = false;
+  poSaveBtn.addEventListener("click", async ()=>{
+    if(poSaving) return; // 防止連點造成重複建立進貨單
+    const items = Array.from(itemsWrap.querySelectorAll(".item-row")).map(row=>({
+      productId: row.querySelector(".it_product").value,
+      qty: Number(row.querySelector(".it_qty").value)||0,
+      costPrice: row.querySelector(".it_cost").value===""? undefined : Number(row.querySelector(".it_cost").value),
+    })).filter(i=>i.productId && i.qty>0);
+    if(!items.length){ toast("請至少選擇一項商品並輸入數量","error"); return; }
+    poSaving = true;
+    poSaveBtn.disabled = true;
+    poSaveBtn.textContent = "儲存中...";
+    try{
+      await apiPost("createPurchaseOrder", {
+        date: document.getElementById("po_date").value,
+        vendor: document.getElementById("po_vendor").value.trim(),
+        notes: document.getElementById("po_notes").value.trim(),
+        items,
+      });
+      toast("進貨單已建立，庫存已更新","success");
+      backdrop.remove();
+      await refreshProducts();
+      await loadPurchaseOrders();
+    }catch(err){
+      toast(err.message,"error");
+      poSaving = false;
+      poSaveBtn.disabled = false;
+      poSaveBtn.textContent = "儲存";
+    }
+  });
+}
+
+/* ================================================================
+ *  查詢庫存
+ * ================================================================ */
+
+let INVENTORY_CACHE = [];
+
+async function loadInventory(){
+  try{
+    INVENTORY_CACHE = await apiGet("getInventorySummary");
+    populateCategoryFilters();
+    renderInventory();
+  }catch(err){ toast(err.message,"error"); }
+}
+
+function renderInventory(){
+  const kw = document.getElementById("invSearch").value.trim().toLowerCase();
+  const cat = document.getElementById("invCategoryFilter").value;
+  const rows = INVENTORY_CACHE.filter(p=>{
+    if(cat && p.Category!==cat) return false;
+    if(!kw) return true;
+    return [p.Name,p.Barcode,p.Vendor].some(v=>String(v||"").toLowerCase().includes(kw));
+  });
+  document.getElementById("inventoryBody").innerHTML = rows.map(p=>`
+    <tr>
+      <td>${escapeHtml(p.Barcode)}</td>
+      <td>${escapeHtml(p.Name)}</td>
+      <td>${p.Category? `<span class="tag">${escapeHtml(p.Category)}</span>`:""}</td>
+      <td>${escapeHtml(p.Vendor)}</td>
+      <td class="num"><b>${fmtMoney(p.Stock)}</b></td>
+      <td class="num">${fmtMoney(p.Sold30Days)}</td>
+      <td class="num">${fmtMoney(p.TotalSold)}</td>
+      <td class="num">${fmtMoney(p.TotalPurchased)}</td>
+      <td class="num">${fmtMoney(p.Price)}</td>
+      <td class="num">${p.SpecialPrice!==""&&p.SpecialPrice!==undefined? fmtMoney(p.SpecialPrice):"—"}</td>
+      <td><button class="btn ghost sm" onclick="quickAdjustStock('${p.ProductID}', ${Number(p.Stock)||0})">調整</button></td>
+    </tr>
+  `).join("");
+}
+document.getElementById("invSearch").addEventListener("input", renderInventory);
+document.getElementById("invCategoryFilter").addEventListener("change", renderInventory);
+
+document.getElementById("btnExportInventory").addEventListener("click", ()=>{
+  const kw = document.getElementById("invSearch").value.trim().toLowerCase();
+  const cat = document.getElementById("invCategoryFilter").value;
+  const rows = INVENTORY_CACHE.filter(p=>{
+    if(cat && p.Category!==cat) return false;
+    if(!kw) return true;
+    return [p.Name,p.Barcode,p.Vendor].some(v=>String(v||"").toLowerCase().includes(kw));
+  });
+  const data = rows.map(p=>({
+    條碼:p.Barcode, 品名:p.Name, 分類:p.Category, 廠商:p.Vendor,
+    庫存:p.Stock, 近30天銷量:p.Sold30Days, 累計銷量:p.TotalSold, 累計進貨:p.TotalPurchased,
+    進貨價:p.CostPrice, 售價:p.Price, 特價:p.SpecialPrice, 單位:p.Unit,
+  }));
+  exportToExcel(data, `庫存清單_${todayStr()}.xlsx`, "庫存");
+});
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+function exportToExcel(dataArray, filename, sheetName){
+  const ws = XLSX.utils.json_to_sheet(dataArray);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"工作表1");
+  XLSX.writeFile(wb, filename);
+}
+
+/* ================================================================
+ *  銷貨
+ * ================================================================ */
+
+document.getElementById("btnNewSale").addEventListener("click", openSaleModal);
+document.getElementById("saleFilterStart").addEventListener("change", loadSales);
+document.getElementById("saleFilterEnd").addEventListener("change", loadSales);
+document.getElementById("btnSaleFilterClear").addEventListener("click", ()=>{
+  document.getElementById("saleFilterStart").value="";
+  document.getElementById("saleFilterEnd").value="";
+  loadSales();
+});
+
+async function loadSales(){
+  try{
+    if(!PRODUCTS.length) await refreshProducts();
+    const params = {};
+    const s = document.getElementById("saleFilterStart").value;
+    const e = document.getElementById("saleFilterEnd").value;
+    if(s) params.startDate = s;
+    if(e) params.endDate = e;
+    const list = await apiGet("listSales", params);
+    renderSaleList(list);
+  }catch(err){ toast(err.message,"error"); }
+}
+
+function renderSaleList(list){
+  const wrap = document.getElementById("saleList");
+  document.getElementById("saleEmpty").style.display = list.length? "none":"block";
+  wrap.innerHTML = list.map(s=>{
+    const total = s.items.reduce((sum,i)=>sum+Number(i.Subtotal||0),0);
+    return `
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <span class="title">${escapeHtml(s.Date)} ${s.Customer? "· "+escapeHtml(s.Customer):""}</span>
+          <div class="muted" style="font-size:12.5px;">單號 ${escapeHtml(s.SaleID)}${s.Notes? " · "+escapeHtml(s.Notes):""}</div>
+        </div>
+        <div class="muted">共 ${s.items.length} 項 · 小計 NT$${fmtMoney(total)}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>品名</th><th class="num">數量</th><th class="num">售價</th><th class="num">小計</th></tr></thead>
+          <tbody>
+            ${s.items.map(i=>`<tr><td>${escapeHtml(i.ProductName)}</td><td class="num">${fmtMoney(i.Qty)}</td><td class="num">${fmtMoney(i.SalePrice)}</td><td class="num">${fmtMoney(i.Subtotal)}</td></tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function openSaleModal(){
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h2>新增銷貨</h2>
+      <div class="grid2">
+        <div class="field"><label>銷貨日期</label><input id="sl_date" type="date" value="${new Date().toISOString().slice(0,10)}" /></div>
+        <div class="field"><label>客戶（選填）</label><input id="sl_customer" /></div>
+      </div>
+      <div class="field"><label>備註</label><input id="sl_notes" /></div>
+      <hr />
+      <div id="sl_items"></div>
+      <button class="btn ghost sm" id="sl_addItem">＋ 新增一列商品</button>
+      <div class="row" style="justify-content:flex-end;margin-top:14px;">
+        <button class="btn ghost" id="sl_cancel">取消</button>
+        <button class="btn" id="sl_save">儲存銷貨單</button>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  backdrop.addEventListener("click",(e)=>{ if(e.target===backdrop) backdrop.remove(); });
+  backdrop.querySelector("#sl_cancel").onclick = ()=>backdrop.remove();
+
+  const itemsWrap = backdrop.querySelector("#sl_items");
+  const options = PRODUCTS.map(p=>`<option value="${p.ProductID}">${escapeHtml(p.Name)}（庫存${fmtMoney(p.Stock)}）</option>`).join("");
+
+  function addItemRow(){
+    const row = document.createElement("div");
+    row.className = "item-row";
+    row.innerHTML = `
+      <select class="it_product">${`<option value="">選擇商品...</option>`+options}</select>
+      <input class="it_qty" type="number" placeholder="數量" value="1" />
+      <input class="it_price" type="number" step="0.01" placeholder="售價" />
+      <div class="muted it_subtotal num">0</div>
+      <button class="btn ghost sm">✕</button>
+    `;
+    itemsWrap.appendChild(row);
+    const prodSel = row.querySelector(".it_product");
+    const qtyInput = row.querySelector(".it_qty");
+    const priceInput = row.querySelector(".it_price");
+    const subEl = row.querySelector(".it_subtotal");
+    function recalc(){
+      const qty = Number(qtyInput.value)||0;
+      const price = Number(priceInput.value)||0;
+      subEl.textContent = fmtMoney(qty*price);
+    }
+    prodSel.addEventListener("change", ()=>{
+      const p = PRODUCTS.find(x=>x.ProductID===prodSel.value);
+      if(p) priceInput.value = (p.SpecialPrice!==""&&p.SpecialPrice!==undefined)? p.SpecialPrice : p.Price;
+      recalc();
+    });
+    qtyInput.addEventListener("input", recalc);
+    priceInput.addEventListener("input", recalc);
+    row.querySelector("button").addEventListener("click", ()=>row.remove());
+  }
+  addItemRow();
+  backdrop.querySelector("#sl_addItem").addEventListener("click", addItemRow);
+
+  const slSaveBtn = backdrop.querySelector("#sl_save");
+  let slSaving = false;
+  slSaveBtn.addEventListener("click", async ()=>{
+    if(slSaving) return; // 防止連點造成重複建立銷貨單
+    const items = Array.from(itemsWrap.querySelectorAll(".item-row")).map(row=>({
+      productId: row.querySelector(".it_product").value,
+      qty: Number(row.querySelector(".it_qty").value)||0,
+      salePrice: row.querySelector(".it_price").value===""? undefined : Number(row.querySelector(".it_price").value),
+    })).filter(i=>i.productId && i.qty>0);
+    if(!items.length){ toast("請至少選擇一項商品並輸入數量","error"); return; }
+    slSaving = true;
+    slSaveBtn.disabled = true;
+    slSaveBtn.textContent = "儲存中...";
+    try{
+      await apiPost("createSale", {
+        date: document.getElementById("sl_date").value,
+        customer: document.getElementById("sl_customer").value.trim(),
+        notes: document.getElementById("sl_notes").value.trim(),
+        items,
+      });
+      toast("銷貨單已建立，庫存已更新","success");
+      backdrop.remove();
+      await refreshProducts();
+      await loadSales();
+    }catch(err){
+      toast(err.message,"error");
+      slSaving = false;
+      slSaveBtn.disabled = false;
+      slSaveBtn.textContent = "儲存";
+    }
+  });
+}
+
+/* ================================================================
+ *  點貨 / 盤點
+ * ================================================================ */
+
+let currentCountId = null;
+let currentCountDetail = null;
+let scanner = null;
+let scanning = false;
+let lastScan = {code:"", time:0};
+
+async function loadStocktakeTab(){
+  try{
+    if(!PRODUCTS.length) await refreshProducts();
+    const counts = await apiGet("listStockCounts");
+    const inProgress = counts.find(c=>c.Status==="進行中");
+    const resumeArea = document.getElementById("stResumeArea");
+    if(inProgress){
+      resumeArea.innerHTML = `<div class="row"><span class="muted">發現進行中的盤點：${escapeHtml(inProgress.Date)} ${escapeHtml(inProgress.Notes||"")}</span>
+        <button class="btn secondary sm" id="btnResume">繼續這次盤點</button></div>`;
+      document.getElementById("btnResume").onclick = ()=>openStocktakeSession(inProgress.CountID);
+    } else {
+      resumeArea.innerHTML = "";
+    }
+    renderCountHistory(counts);
+  }catch(err){ toast(err.message,"error"); }
+}
+
+function renderCountHistory(counts){
+  const wrap = document.getElementById("stHistoryList");
+  if(!counts.length){ wrap.textContent = "尚無盤點紀錄。"; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>日期</th><th>備註</th><th>狀態</th><th>建立時間</th><th>完成時間</th><th>操作</th></tr></thead>
+    <tbody>${counts.map(c=>`
+      <tr>
+        <td>${escapeHtml(c.Date)}</td><td>${escapeHtml(c.Notes||"")}</td>
+        <td>${c.Status==="已完成"? '<span class="tag" style="background:var(--green-soft);color:var(--green);">已完成</span>':'<span class="tag" style="background:var(--amber-soft);color:var(--amber);">進行中</span>'}</td>
+        <td>${escapeHtml(c.CreatedAt)}</td><td>${escapeHtml(c.CompletedAt||"—")}</td>
+        <td><button class="btn ghost sm" onclick="openStocktakeSession('${c.CountID}')">查看</button></td>
+      </tr>`).join("")}</tbody>
+  </table></div>`;
+}
+
+document.getElementById("btnStartCount").addEventListener("click", async ()=>{
+  try{
+    const notes = document.getElementById("stNewNotes").value.trim();
+    const {CountID} = await apiPost("startStockCount", {notes});
+    toast("已開始新盤點","success");
+    openStocktakeSession(CountID);
+  }catch(err){ toast(err.message,"error"); }
+});
+
+async function openStocktakeSession(countId){
+  currentCountId = countId;
+  document.getElementById("stNoSession").style.display = "none";
+  document.getElementById("stSessionArea").style.display = "block";
+  await refreshCountDetail();
+  populateManualPick();
+}
+
+document.getElementById("btnCloseSession").addEventListener("click", async ()=>{
+  await stopScanner();
+  currentCountId = null;
+  document.getElementById("stSessionArea").style.display = "none";
+  document.getElementById("stNoSession").style.display = "block";
+  loadStocktakeTab();
+});
+
+async function refreshCountDetail(){
+  currentCountDetail = await apiGet("getStockCount", {countId: currentCountId});
+  const h = currentCountDetail.header;
+  document.getElementById("stSessionTitle").textContent = `盤點：${h.Date} ${h.Notes||""}`;
+  document.getElementById("stSessionMeta").textContent = h.Status==="已完成" ? "（已完成，僅供檢視）" : "（進行中）";
+  const finished = h.Status==="已完成";
+  document.getElementById("btnToggleScan").disabled = finished;
+  document.getElementById("btnFinishCount").disabled = finished;
+  document.getElementById("manualBarcode").disabled = finished;
+  document.getElementById("btnManualAdd").disabled = finished;
+  renderStocktakeStats();
+  renderStocktakeTable();
+}
+
+function renderStocktakeStats(){
+  const items = currentCountDetail.items;
+  const scannedItems = items.filter(i=>Number(i.ScannedQty)>0).length;
+  document.getElementById("statScannedItems").textContent = scannedItems;
+  document.getElementById("statTotalItems").textContent = items.length;
+  document.getElementById("statUnscanned").textContent = items.length - scannedItems;
+}
+
+function renderStocktakeTable(){
+  const kw = document.getElementById("stTableSearch").value.trim().toLowerCase();
+  const onlyUnscanned = document.getElementById("stOnlyUnscanned").checked;
+  const onlyDiff = document.getElementById("stOnlyDiff").checked;
+  let items = currentCountDetail.items;
+  if(kw) items = items.filter(i=>[i.ProductName,i.Barcode].some(v=>String(v||"").toLowerCase().includes(kw)));
+  if(onlyUnscanned) items = items.filter(i=>Number(i.ScannedQty)===0);
+  if(onlyDiff) items = items.filter(i=>Number(i.EffectiveDiff)!==0);
+
+  document.getElementById("stTableBody").innerHTML = items.map(i=>{
+    const diffClass = i.EffectiveDiff>0?"diff-pos":(i.EffectiveDiff<0?"diff-neg":"diff-zero");
+    const diffText = i.EffectiveDiff>0? "+"+i.EffectiveDiff : i.EffectiveDiff;
+    return `<tr>
+      <td>${escapeHtml(i.Barcode)}</td>
+      <td>${escapeHtml(i.ProductName)}</td>
+      <td class="num">${fmtMoney(i.SystemQtyAtStart)}</td>
+      <td class="num"><input class="qty-input" type="number" value="${i.EffectiveFinalQty}" onchange="updateCountItemQty('${i.ProductID}', this.value)" /></td>
+      <td class="num ${diffClass}">${diffText}</td>
+    </tr>`;
+  }).join("");
+}
+
+document.getElementById("stTableSearch").addEventListener("input", renderStocktakeTable);
+document.getElementById("stOnlyUnscanned").addEventListener("change", renderStocktakeTable);
+document.getElementById("stOnlyDiff").addEventListener("change", renderStocktakeTable);
+
+async function updateCountItemQty(productId, val){
+  const n = Number(val);
+  if(isNaN(n)) return;
+  try{
+    await apiPost("updateStockCountItem", {countId: currentCountId, productId, finalQty: n});
+    await refreshCountDetail();
+  }catch(err){ toast(err.message,"error"); }
+}
+
+function populateManualPick(){
+  const sel = document.getElementById("stManualPick");
+  sel.innerHTML = '<option value="">手動選商品加入點貨（無條碼或掃描失敗時使用）...</option>' +
+    PRODUCTS.map(p=>`<option value="${p.ProductID}">${escapeHtml(p.Name)}（${escapeHtml(p.Barcode)}）</option>`).join("");
+}
+
+document.getElementById("btnManualAdd").addEventListener("click", async ()=>{
+  const sel = document.getElementById("stManualPick");
+  if(!sel.value) return;
+  const item = currentCountDetail.items.find(i=>i.ProductID===sel.value);
+  const newQty = (item? item.EffectiveFinalQty : 0) + 1;
+  try{
+    await apiPost("updateStockCountItem", {countId: currentCountId, productId: sel.value, finalQty: newQty});
+    toast("已加入點貨統計","success");
+    await refreshCountDetail();
+  }catch(err){ toast(err.message,"error"); }
+});
+
+// -------- 掃描 --------
+
+document.getElementById("btnToggleScan").addEventListener("click", async ()=>{
+  if(scanning){ await stopScanner(); } else { await startScanner(); }
+});
+
+async function startScanner(){
+  const readerEl = document.getElementById("reader");
+  readerEl.style.display = "block";
+  scanner = new Html5Qrcode("reader", {
+    formatsToSupport: [
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+      Html5QrcodeSupportedFormats.UPC_E,
+    ],
+    verbose:false,
+  });
+  try{
+    await scanner.start(
+      {facingMode:"environment"},
+      {fps:10, qrbox:{width:260, height:140}},
+      onScanDecoded,
+      ()=>{} // 每幀掃不到不用理會
+    );
+    scanning = true;
+    document.getElementById("btnToggleScan").textContent = "⏹ 停止掃描";
+    setBanner("idle","對準商品上的條碼...");
+  }catch(err){
+    toast("無法啟動相機："+err, "error");
+    readerEl.style.display = "none";
+  }
+}
+
+async function stopScanner(){
+  if(scanner && scanning){
+    try{ await scanner.stop(); await scanner.clear(); }catch(e){}
+  }
+  scanning = false;
+  document.getElementById("btnToggleScan").textContent = "📷 啟動相機掃描";
+  document.getElementById("reader").style.display = "none";
+  setBanner("idle","尚未開始掃描");
+}
+
+function setBanner(type, text){
+  const b = document.getElementById("scanBanner");
+  b.className = "scan-banner "+type;
+  b.textContent = text;
+}
+
+async function onScanDecoded(code){
+  const now = Date.now();
+  if(code===lastScan.code && (now-lastScan.time)<1500) return; // 防止同一碼重複觸發
+  lastScan = {code, time:now};
+  await handleScan(code);
+}
+
+document.getElementById("manualBarcode").addEventListener("keydown", async (e)=>{
+  if(e.key==="Enter"){
+    const val = e.target.value.trim();
+    if(val){ await handleScan(val); e.target.value=""; }
+  }
+});
+
+async function handleScan(barcode){
+  try{
+    const qty = Number(document.getElementById("scanQty").value) || 1;
+    const result = await apiPost("scanStockCount", {countId: currentCountId, barcode, qty});
+    if(result.found){
+      beep("success");
+      setBanner("success", `✅ 掃入成功：${result.product.Name}（本次+${qty}，累計 ${result.scannedQty} 件）`);
+    } else {
+      beep("fail");
+      setBanner("fail", `❌ 無商品：查無條碼「${barcode}」`);
+    }
+    await refreshCountDetail();
+  }catch(err){
+    beep("fail");
+    setBanner("fail", "❌ 掃描發生錯誤："+err.message);
+  }
+}
+
+// -------- 匯出 / 完成 --------
+
+document.getElementById("btnExportCount").addEventListener("click", ()=>{
+  if(!currentCountDetail) return;
+  const data = currentCountDetail.items.map(i=>({
+    條碼:i.Barcode, 品名:i.ProductName, 系統庫存:i.SystemQtyAtStart,
+    已掃數量:i.ScannedQty, 確認數量:i.EffectiveFinalQty, 差異:i.EffectiveDiff,
+  }));
+  exportToExcel(data, `點貨盤點_${currentCountDetail.header.Date}.xlsx`, "盤點");
+});
+
+document.getElementById("btnFinishCount").addEventListener("click", async ()=>{
+  const diffCount = currentCountDetail.items.filter(i=>Number(i.EffectiveDiff)!==0).length;
+  if(!confirm(`即將套用調整並完成盤點，共有 ${diffCount} 項商品的庫存數量會被更新，確定要送出嗎？`)) return;
+  try{
+    await stopScanner();
+    await apiPost("finishStockCount", {countId: currentCountId});
+    toast("盤點已完成，庫存已更新","success");
+    await refreshProducts();
+    await refreshCountDetail();
+  }catch(err){ toast(err.message,"error"); }
+});
+
+/* ================================================================
+ *  啟動
+ * ================================================================ */
+
+(function init(){
+  if(!API_URL || API_URL.indexOf("PASTE_")===0){
+    document.getElementById("configBanner").style.display = "block";
+    return;
+  }
+  loadProducts();
+})();
+</script>
+</body>
+</html>
